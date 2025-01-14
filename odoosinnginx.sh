@@ -27,9 +27,9 @@ echo "Instalando Node.js y lessc..."
 apt install -y nodejs npm
 npm install -g less less-plugin-clean-css
 
-# Clonación del repositorio de Odoo 16
-echo "Clonando el repositorio de Odoo 16..."
-git clone https://www.github.com/odoo/odoo --branch 16.0 --depth 1 /opt/odoo
+# Clonación del repositorio de Odoo 17
+echo "Clonando el repositorio de Odoo 17..."
+git clone https://www.github.com/odoo/odoo --branch 17.0 --depth 1 /opt/odoo
 
 # Creación de un entorno virtual de Python
 echo "Creando un entorno virtual de Python..."
@@ -108,4 +108,4 @@ ufw allow 8069/tcp
 # Reiniciar Odoo
 sudo systemctl restart odoo
 
-echo "Instalación y configuración de Odoo 16 completada."
+echo "Instalación y configuración de Odoo 17 completada."
