@@ -39,9 +39,9 @@ echo "Instalando Node.js y lessc..."
 apt install -y nodejs npm
 npm install -g less less-plugin-clean-css
 
-# Clonación del repositorio de Odoo 16
-echo "Clonando el repositorio de Odoo 16..."
-git clone https://www.github.com/odoo/odoo --branch 16.0 --depth 1 /opt/odoo
+# Clonación del repositorio de Odoo 17
+echo "Clonando el repositorio de Odoo 17..."
+git clone https://www.github.com/odoo/odoo --branch 17.0 --depth 1 /opt/odoo
 
 # Creación de un entorno virtual de Python
 echo "Creando un entorno virtual de Python..."
@@ -121,7 +121,7 @@ ufw allow 8069/tcp
 sudo systemctl restart odoo
 
 echo "-----------------------------------------"
-echo "¡Instalación de Odoo 16 completada con éxito!"
+echo "¡Instalación de Odoo 17 completada con éxito!"
 
 echo "Configurar Nginx y Let's Encrypt para Odoo"
 echo "-----------------------------------------"
@@ -147,16 +147,16 @@ server {
     server_name www.$dominio $dominio;
 
     # Redirigir www a sin www
-    if (\$host = www.$dominio) {
-        return 301 http://$dominio\$request_uri;
+    if ($host = www.$dominio) {
+        return 301 http://$dominio$request_uri;
     }
 
     # Pasar tráfico a Odoo en HTTP
     location / {
         proxy_pass http://127.0.0.1:8069;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 EOF"
@@ -198,5 +198,3 @@ sudo certbot renew --dry-run
 echo "-----------------------------------------"
 echo "¡Configuración completada con éxito!"
 echo "Tu sitio está disponible en https://$dominio"
-
-# si aparece error ejecutar c>>sudo certbot --nginx -d dominio.com --email hola@2pz.org --agree-tos --non-interactive --redirect
