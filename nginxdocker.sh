@@ -1,28 +1,70 @@
 #!/bin/bash
 
-# Actualizar el sistema
-echo "Actualizando el sistema..."
-sudo apt update && sudo apt upgrade -y
+# Solicitar dominio y correo electrónico
+read -p "Introduce tu dominio (ejemplo: tudominio.com): " ODOO_DOMAIN
+read -p "Introduce tu correo electrónico para Let's Encrypt: " EMAIL
 
-# Instalar Docker
-echo "Instalando Docker..."
-sudo apt install docker.io -y
+# Configurar el firewall (ufw)
+echo "Configurando el firewall..."
+sudo apt install ufw -y
+sudo ufw allow ssh
+sudo ufw allow http
+sudo ufw allow https
+sudo ufw enable
 
-# Iniciar y habilitar Docker
-echo "Iniciando y habilitando Docker..."
-sudo systemctl start docker
-sudo systemctl enable docker
+# Instalar Certbot para obtener un certificado SSL
+echo "Instalando Certbot..."
+sudo apt install certbot python3-certbot-nginx -y
 
-# Instalar Docker Compose
-echo "Instalando Docker Compose..."
-sudo apt install docker-compose -y
+# Detener temporalmente el contenedor de Odoo para configurar SSL
+echo "Deteniendo el contenedor de Odoo temporalmente..."
+cd ~/odoo17
+docker-compose down
 
-# Crear directorio para Odoo
-echo "Creando directorio para Odoo..."
-mkdir -p ~/odoo17 && cd ~/odoo17
+# Configurar Nginx como proxy inverso para Odoo
+echo "Instalando Nginx..."
+sudo apt install nginx -y
 
-# Crear archivo docker-compose.yml
-echo "Creando archivo docker-compose.yml..."
+# Crear un archivo de configuración de Nginx para Odoo
+echo "Creando configuración de Nginx para Odoo..."
+sudo bash -c "cat > /etc/nginx/sites-available/odoo <<EOL
+server {
+    listen 80;
+    server_name $ODOO_DOMAIN;
+
+    location / {
+        proxy_pass http://127.0.0.1:8069;
+        proxy_set_header Host \\\$host;
+        proxy_set_header X-Real-IP \\\$remote_addr;
+        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\\$scheme;
+    }
+}
+EOL"
+
+# Habilitar la configuración de Nginx
+echo "Habilitando la configuración de Nginx..."
+sudo ln -s /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default  # Eliminar configuración por defecto si existe
+
+# Verificar la configuración de Nginx
+echo "Verificando la configuración de Nginx..."
+sudo nginx -t
+if [ $? -ne 0 ]; then
+    echo "Error en la configuración de Nginx. Por favor, revisa el archivo /etc/nginx/sites-available/odoo."
+    exit 1
+fi
+
+# Reiniciar Nginx
+echo "Reiniciando Nginx..."
+sudo systemctl restart nginx
+
+# Obtener un certificado SSL con Certbot
+echo "Obteniendo un certificado SSL con Certbot..."
+sudo certbot --nginx -d $ODOO_DOMAIN --non-interactive --agree-tos --email $EMAIL
+
+# Crear archivo docker-compose.yml para Odoo 17
+echo "Creando archivo docker-compose.yml para Odoo 17..."
 cat <<EOL > docker-compose.yml
 version: '3.1'
 services:
@@ -31,7 +73,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8069:8069"
+      - "127.0.0.1:8069:8069"
     volumes:
       - odoo-data:/var/lib/odoo
     environment:
@@ -53,10 +95,10 @@ volumes:
   postgres-data:
 EOL
 
-# Iniciar Odoo con Docker Compose
-echo "Iniciando Odoo 17 con Docker Compose..."
+# Reiniciar los contenedores de Odoo
+echo "Reiniciando los contenedores de Odoo..."
 docker-compose up -d
 
 # Mostrar mensaje final
-echo "¡Odoo 17 se ha instalado correctamente!"
-echo "Accede a Odoo en: http://<IP_DEL_SERVIDOR>:8069"
+echo "¡Servidor protegido y SSL configurado correctamente!"
+echo "Accede a Odoo en: https://$ODOO_DOMAIN"
