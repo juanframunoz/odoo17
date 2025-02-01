@@ -21,6 +21,21 @@ sudo apt install docker-compose -y
 echo "Creando directorio para Odoo..."
 mkdir -p ~/odoo17 && cd ~/odoo17
 
+# Crear directorio para addons personalizados
+echo "Creando directorio para addons personalizados..."
+mkdir -p custom_addons
+
+# Clonar módulos de localización española de la OCA
+echo "Clonando módulos de localización española de la OCA..."
+cd custom_addons
+# Se utiliza la rama 17.0, ajusta si es necesario
+if [ ! -d "l10n-spain" ]; then
+    git clone -b 17.0 https://github.com/OCA/l10n-spain.git
+else
+    echo "El repositorio l10n-spain ya existe, omitiendo clonación."
+fi
+cd ..
+
 # Crear archivo docker-compose.yml
 echo "Creando archivo docker-compose.yml..."
 cat <<EOL > docker-compose.yml
@@ -34,6 +49,7 @@ services:
       - "8069:8069"
     volumes:
       - odoo-data:/var/lib/odoo
+      - ./custom_addons:/mnt/extra-addons
     environment:
       - HOST=db
       - USER=odoo
@@ -60,3 +76,4 @@ docker-compose up -d
 # Mostrar mensaje final
 echo "¡Odoo 17 se ha instalado correctamente!"
 echo "Accede a Odoo en: http://<IP_DEL_SERVIDOR>:8069"
+echo "Recuerda activar e instalar los módulos de localización española desde la interfaz de Odoo."
