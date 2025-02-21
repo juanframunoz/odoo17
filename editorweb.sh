@@ -4,10 +4,10 @@
 read -p "Ingrese el dominio para Odoo (ej. odoo17.ejemplo.com): " DOMAIN
 
 # Define la ruta del archivo de configuración de Nginx
-NGINX_CONF="/etc/nginx/sites-available/$DOMAIN"
+NGINX_CONF="/etc/nginx/sites-available/odoo"
 
-# Crea el archivo de configuración
-echo "Creando configuración de Nginx para $DOMAIN..."
+# Sobrescribir el archivo de configuración de Odoo en Nginx
+echo "Sobrescribiendo configuración de Nginx para Odoo..."
 
 cat <<EOF | sudo tee $NGINX_CONF
 server {
@@ -97,10 +97,10 @@ server {
 }
 EOF
 
-# Crear un enlace simbólico a "sites-enabled"
-sudo ln -s $NGINX_CONF /etc/nginx/sites-enabled/
+# Crear un enlace simbólico en "sites-enabled" (si no existe)
+sudo ln -sf $NGINX_CONF /etc/nginx/sites-enabled/odoo
 
-# Prueba la configuración de Nginx
+# Verificar configuración de Nginx
 echo "Verificando configuración de Nginx..."
 sudo nginx -t
 
@@ -119,4 +119,4 @@ sudo certbot --nginx -d $DOMAIN --agree-tos --redirect --non-interactive --email
 # Recargar Nginx después de la instalación del certificado SSL
 sudo systemctl reload nginx
 
-echo "✅ Configuración completada con éxito para $DOMAIN"
+echo "✅ Configuración completada con éxito para Odoo en $DOMAIN"
