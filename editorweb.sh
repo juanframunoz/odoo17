@@ -13,6 +13,8 @@ cat <<EOF | sudo tee $NGINX_CONF
 server {
     listen 80;
     server_name $DOMAIN;
+
+    # Redirigir HTTP a HTTPS
     return 301 https://\$host\$request_uri;
 }
 
@@ -20,7 +22,7 @@ server {
     listen 443 ssl;
     server_name $DOMAIN;
 
-    # SSL (Let's Encrypt)
+    # Configuración SSL (Certbot)
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
@@ -71,7 +73,16 @@ server {
     add_header X-Frame-Options SAMEORIGIN;
 
     # Seguridad contra ataques de contenido mixto y XSS
-    add_header Content-Security-Policy "default-src 'self' https: data: 'unsafe-inline' 'unsafe-eval';" always;
+    add_header Content-Security-Policy "
+        default-src 'self' https: blob: data: 'unsafe-inline' 'unsafe-eval';
+        script-src 'self' https: 'unsafe-inline' 'unsafe-eval' blob:;
+        style-src 'self' https: 'unsafe-inline';
+        img-src 'self' https: data: blob:;
+        font-src 'self' https: data:;
+        frame-src 'self' https:;
+        connect-src 'self' https: blob:;
+    " always;
+
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
 
@@ -109,4 +120,3 @@ sudo certbot --nginx -d $DOMAIN --agree-tos --redirect --non-interactive --email
 sudo systemctl reload nginx
 
 echo "✅ Configuración completada con éxito para $DOMAIN"
-
