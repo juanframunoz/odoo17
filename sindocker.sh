@@ -40,7 +40,7 @@ sudo chown -R odoo:odoo /opt/odoo/custom_addons
 echo "Configurando entorno virtual y dependencias..."
 sudo -u odoo python3 -m venv /opt/odoo/venv
 source /opt/odoo/venv/bin/activate
-pip install -r /opt/odoo/requirements.txt
+pip install wheel setuptools psycopg2-binary werkzeug polib Pillow lxml markupsafe decorator Babel dateutil requests docutils ebaysdk feedparser gevent greenlet Jinja2 libsass num2words ofxparse passlib psutil pydot python-dateutil pytz PyPDF2 pyserial python-stdnum pyusb qrcode reportlab suds-jurko vatnumber vobject XlsxWriter xlwt xlrd
 deactivate
 
 # Crear el servicio de systemd para Odoo
@@ -63,6 +63,17 @@ EOL
 # Recargar daemon y habilitar Odoo
 sudo systemctl daemon-reload
 sudo systemctl enable --now odoo
+
+# Configurar Certbot antes de Nginx
+echo "Obteniendo certificado SSL con Certbot..."
+sudo certbot certonly --nginx --agree-tos --email admin@${DOMAIN} -d ${DOMAIN}
+
+# Crear manualmente el archivo SSL de Nginx si falta
+if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
+    sudo mkdir -p /etc/letsencrypt
+    sudo touch /etc/letsencrypt/options-ssl-nginx.conf
+    echo "ssl_protocols TLSv1.2 TLSv1.3;" | sudo tee -a /etc/letsencrypt/options-ssl-nginx.conf
+fi
 
 # Configurar Nginx
 echo "Configurando Nginx..."
@@ -117,10 +128,6 @@ EOL
 # Habilitar configuración y reiniciar Nginx
 sudo ln -s /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl restart nginx
-
-# Configurar Certbot para HTTPS
-echo "Obteniendo certificado SSL con Certbot..."
-sudo certbot --nginx -d ${DOMAIN} --non-interactive --agree-tos -m admin@${DOMAIN}
 
 # Habilitar redirección automática de SSL
 echo "Habilitando redirección automática a HTTPS..."
