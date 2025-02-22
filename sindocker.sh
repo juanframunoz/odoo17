@@ -40,7 +40,8 @@ sudo chown -R odoo:odoo /opt/odoo/custom_addons
 echo "Configurando entorno virtual y dependencias..."
 sudo -u odoo python3 -m venv /opt/odoo/venv
 source /opt/odoo/venv/bin/activate
-pip install wheel setuptools psycopg2-binary werkzeug polib Pillow lxml markupsafe decorator Babel dateutil requests docutils ebaysdk feedparser gevent greenlet Jinja2 libsass num2words ofxparse passlib psutil pydot python-dateutil pytz PyPDF2 pyserial python-stdnum pyusb qrcode reportlab suds-jurko vatnumber vobject XlsxWriter xlwt xlrd
+pip install wheel setuptools psycopg2-binary werkzeug polib Pillow lxml markupsafe decorator Babel python-dateutil requests docutils ebaysdk feedparser gevent greenlet Jinja2 libsass num2words ofxparse passlib psutil pydot pytz PyPDF2 pyserial python-stdnum pyusb qrcode reportlab suds-jurko vatnumber vobject XlsxWriter xlwt xlrd
+
 deactivate
 
 # Crear el servicio de systemd para Odoo
@@ -68,7 +69,8 @@ sudo systemctl enable --now odoo
 echo "Obteniendo certificado SSL con Certbot..."
 sudo certbot certonly --nginx --agree-tos --email admin@${DOMAIN} -d ${DOMAIN}
 
-# Crear manualmente el archivo SSL de Nginx si falta
+# Verificar si el archivo SSL de Nginx existe, si no, crearlo
+echo "Verificando archivo de configuración SSL de Nginx..."
 if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
     sudo mkdir -p /etc/letsencrypt
     sudo touch /etc/letsencrypt/options-ssl-nginx.conf
@@ -125,9 +127,13 @@ server {
 }
 EOL
 
-# Habilitar configuración y reiniciar Nginx
-sudo ln -s /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl restart nginx
+# Verificar si la configuración de Nginx es válida antes de habilitarla
+if sudo nginx -t; then
+    sudo ln -sf /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
+    sudo systemctl restart nginx
+else
+    echo "Error en la configuración de Nginx, revisa /etc/nginx/sites-available/odoo"
+fi
 
 # Habilitar redirección automática de SSL
 echo "Habilitando redirección automática a HTTPS..."
