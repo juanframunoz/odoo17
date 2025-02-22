@@ -1,81 +1,32 @@
 #!/bin/bash
 
-# Solicitar dominio y correo electrónico
-read -p "Introduce tu dominio (ejemplo: tudominio.com): " ODOO_DOMAIN
-read -p "Introduce tu correo electrónico para Let's Encrypt: " EMAIL
+# Solicitar el dominio al usuario
+echo "Introduce el dominio en el que quieres instalar Odoo (ej: fichar.me):"
+read -r DOMAIN
 
-# Configurar el firewall (ufw)
-echo "Configurando el firewall..."
-sudo apt install ufw -y
-sudo ufw allow ssh
-sudo ufw allow http
-sudo ufw allow https
-sudo ufw enable
-
-# Instalar Certbot para obtener un certificado SSL
-echo "Instalando Certbot..."
-sudo apt install certbot python3-certbot-nginx -y
-
-# Detener temporalmente el contenedor de Odoo para configurar SSL
-echo "Deteniendo el contenedor de Odoo temporalmente..."
-cd ~/odoo17
-docker-compose down
-
-# Configurar Nginx como proxy inverso para Odoo
-echo "Instalando Nginx..."
-sudo apt install nginx -y
-
-# Crear un archivo de configuración de Nginx para Odoo
-echo "Creando configuración de Nginx para Odoo..."
-sudo bash -c "cat > /etc/nginx/sites-available/odoo <<EOL
-server {
-    listen 80;
-    server_name $ODOO_DOMAIN;
-
-    location / {
-        proxy_pass http://127.0.0.1:8069;
-        proxy_set_header Host \\\$host;
-        proxy_set_header X-Real-IP \\\$remote_addr;
-        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \\\$scheme;
-    }
-}
-EOL"
-
-# Habilitar la configuración de Nginx
-echo "Habilitando la configuración de Nginx..."
-sudo ln -s /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default  # Eliminar configuración por defecto si existe
-
-# Verificar la configuración de Nginx
-echo "Verificando la configuración de Nginx..."
-sudo nginx -t
-if [ $? -ne 0 ]; then
-    echo "Error en la configuración de Nginx. Por favor, revisa el archivo /etc/nginx/sites-available/odoo."
+if [ -z "$DOMAIN" ]; then
+    echo "Error: No has ingresado un dominio. Saliendo..."
     exit 1
 fi
 
-# Reiniciar Nginx
-echo "Reiniciando Nginx..."
-sudo systemctl restart nginx
+# Crear estructura de directorios
+mkdir -p ~/odoo-docker/{nginx/conf.d,certbot/www,certbot/conf}
+cd ~/odoo-docker || exit
 
-# Obtener un certificado SSL con Certbot
-echo "Obteniendo un certificado SSL con Certbot..."
-sudo certbot --nginx -d $ODOO_DOMAIN --non-interactive --agree-tos --email $EMAIL
+# Crear archivo docker-compose.yml
+cat <<EOF > docker-compose.yml
+version: '3.8'
 
-# Crear archivo docker-compose.yml para Odoo 17
-echo "Creando archivo docker-compose.yml para Odoo 17..."
-cat <<EOL > docker-compose.yml
-version: '3.1'
 services:
-  web:
-    image: odoo:17.0
+  odoo:
+    image: odoo:17
     depends_on:
       - db
     ports:
-      - "127.0.0.1:8069:8069"
+      - "8069:8069"
     volumes:
       - odoo-data:/var/lib/odoo
+      - ./config:/etc/odoo
     environment:
       - HOST=db
       - USER=odoo
@@ -84,21 +35,98 @@ services:
   db:
     image: postgres:13
     environment:
-      - POSTGRES_DB=postgres
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=odoo
+      - POSTGRES_DB=postgres
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
+
+  nginx:
+    image: nginx:latest
+    depends_on:
+      - odoo
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    restart: always
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done'"
 
 volumes:
   odoo-data:
-  postgres-data:
-EOL
+  db-data:
+EOF
 
-# Reiniciar los contenedores de Odoo
-echo "Reiniciando los contenedores de Odoo..."
+# Crear configuración de Nginx
+cat <<EOF > nginx/conf.d/odoo.conf
+server {
+    listen 80;
+    server_name $DOMAIN;
+    
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+    
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    
+    location / {
+        proxy_pass http://odoo:8069;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_redirect off;
+        proxy_connect_timeout 600;
+        proxy_send_timeout 600;
+        proxy_read_timeout 600;
+        
+        add_header X-Frame-Options "SAMEORIGIN";
+        add_header X-XSS-Protection "1; mode=block";
+        add_header X-Content-Type-Options "nosniff";
+    }
+
+    location /longpolling {
+        proxy_pass http://odoo:8072;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+    }
+
+    location /web/static/ {
+        alias /var/lib/odoo/addons/web/static/;
+        expires 30d;
+        access_log off;
+    }
+}
+EOF
+
+# Generar certificado SSL con Certbot
+docker run --rm -v $(pwd)/certbot/conf:/etc/letsencrypt -v $(pwd)/certbot/www:/var/www/certbot certbot/certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --email tu-email@ejemplo.com --agree-tos --no-eff-email
+
+# Levantar los contenedores
 docker-compose up -d
 
-# Mostrar mensaje final
-echo "¡Servidor protegido y SSL configurado correctamente!"
-echo "Accede a Odoo en: https://$ODOO_DOMAIN"
+# Configuración final
+echo "Instalación completada. Odoo ahora está disponible en https://$DOMAIN"
