@@ -9,29 +9,22 @@ if [ -z "$DOMAIN" ]; then
     exit 1
 fi
 
-# Verificar si docker-compose.yml existe antes de intentar detener contenedores
-if [ -f "docker-compose.yml" ]; then
-    echo "Deteniendo todos los contenedores en ejecución..."
-    docker-compose down --remove-orphans
-else
-    echo "No se encontró docker-compose.yml, creando uno nuevo..."
-fi
-
-# Eliminar contenedores corruptos si existen
-docker ps -a | grep "Exited" | awk '{print $1}' | xargs --no-run-if-empty docker rm
+# Detener y eliminar todos los contenedores en ejecución
+echo "Deteniendo todos los contenedores en ejecución..."
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)
 
 # Crear estructura de directorios
-mkdir -p ~/odoo17/
-mkdir -p ~/odoo17/nginx/conf.d ~/odoo17/certbot/www ~/odoo17/certbot/conf ~/odoo17/custom_addons
-cd ~/odoo17 || exit
+mkdir -p ~/odoo-docker/{nginx/conf.d,certbot/www,certbot/conf,custom_addons}
+cd ~/odoo-docker || exit
 
 # Crear archivo docker-compose.yml
 cat <<EOF > docker-compose.yml
-version: '3.1'
+version: '3.8'
 
 services:
-  web:
-    image: odoo:17.0
+  odoo:
+    image: odoo:17
     depends_on:
       - db
     expose:
@@ -47,16 +40,16 @@ services:
   db:
     image: postgres:13
     environment:
-      - POSTGRES_DB=postgres
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=odoo
+      - POSTGRES_DB=postgres
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - db-data:/var/lib/postgresql/data
 
   nginx:
     image: nginx:latest
     depends_on:
-      - web
+      - odoo
     ports:
       - "80:80"
       - "443:443"
@@ -68,8 +61,6 @@ services:
 
   certbot:
     image: certbot/certbot
-    depends_on:
-      - nginx
     volumes:
       - ./certbot/www:/var/www/certbot
       - ./certbot/conf:/etc/letsencrypt
@@ -77,7 +68,7 @@ services:
 
 volumes:
   odoo-data:
-  postgres-data:
+  db-data:
 EOF
 
 # Crear configuración de Nginx
@@ -85,11 +76,11 @@ cat <<EOF > nginx/conf.d/odoo.conf
 server {
     listen 80;
     server_name $DOMAIN;
-
+    
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
-
+    
     location / {
         return 301 https://\$host\$request_uri;
     }
@@ -98,14 +89,14 @@ server {
 server {
     listen 443 ssl;
     server_name $DOMAIN;
-
+    
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
-
+    
     location / {
-        proxy_pass http://web:8069;
+        proxy_pass http://odoo:8069;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -114,14 +105,14 @@ server {
         proxy_connect_timeout 600;
         proxy_send_timeout 600;
         proxy_read_timeout 600;
-
+        
         add_header X-Frame-Options "SAMEORIGIN";
         add_header X-XSS-Protection "1; mode=block";
         add_header X-Content-Type-Options "nosniff";
     }
 
     location /longpolling {
-        proxy_pass http://web:8072;
+        proxy_pass http://odoo:8072;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -129,36 +120,30 @@ server {
     }
 
     location /web/static/ {
-        alias /var/lib/odoo/addons/web/static/;
+        alias /mnt/extra-addons/web/static/;
+        expires 30d;
+        access_log off;
+    }
+
+    location /website/static/ {
+        alias /mnt/extra-addons/website/static/;
+        expires 30d;
+        access_log off;
+    }
+
+    location /base/static/ {
+        alias /mnt/extra-addons/base/static/;
         expires 30d;
         access_log off;
     }
 }
 EOF
 
-# Levantar los contenedores
-echo "Levantando los contenedores..."
-docker-compose up -d
-
-# Esperar hasta que Nginx esté completamente activo
-until docker ps | grep nginx; do
-    echo "Esperando a que Nginx se inicie..."
-    sleep 5
-done
-
-# Verificar logs de Nginx si está en estado de reinicio
-docker ps | grep nginx | grep Restarting && docker-compose logs nginx
-
 # Generar certificado SSL con Certbot
-echo "Generando certificado SSL..."
-docker run --rm -v $(pwd)/certbot/conf:/etc/letsencrypt \
-             -v $(pwd)/certbot/www:/var/www/certbot \
-             certbot/certbot certonly --webroot -w /var/www/certbot \
-             -d $DOMAIN --email tu-email@ejemplo.com --agree-tos --no-eff-email
+docker run --rm -v $(pwd)/certbot/conf:/etc/letsencrypt -v $(pwd)/certbot/www:/var/www/certbot certbot/certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --email tu-email@ejemplo.com --agree-tos --no-eff-email
 
-# Reiniciar Nginx para aplicar los cambios
-echo "Reiniciando Nginx..."
-docker-compose restart nginx
+# Levantar los contenedores
+docker-compose up -d
 
 # Configuración final
 echo "Instalación completada. Odoo ahora está disponible en https://$DOMAIN"
