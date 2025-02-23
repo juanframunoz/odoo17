@@ -9,9 +9,13 @@ if [ -z "$DOMAIN" ]; then
     exit 1
 fi
 
-# Detener y eliminar todos los contenedores en ejecución
-echo "Deteniendo todos los contenedores en ejecución..."
-docker-compose down
+# Verificar si docker-compose.yml existe antes de intentar detener contenedores
+if [ -f "docker-compose.yml" ]; then
+    echo "Deteniendo todos los contenedores en ejecución..."
+    docker-compose down --remove-orphans
+else
+    echo "No se encontró docker-compose.yml, creando uno nuevo..."
+fi
 
 # Crear estructura de directorios
 mkdir -p ~/odoo-docker/{nginx/conf.d,certbot/www,certbot/conf,custom_addons}
@@ -60,6 +64,8 @@ services:
 
   certbot:
     image: certbot/certbot
+    depends_on:
+      - nginx
     volumes:
       - ./certbot/www:/var/www/certbot
       - ./certbot/conf:/etc/letsencrypt
@@ -127,18 +133,24 @@ server {
 EOF
 
 # Levantar los contenedores
+echo "Levantando los contenedores..."
 docker-compose up -d
+
+# Esperar unos segundos para que Nginx esté completamente activo
+sleep 10
 
 # Verificar que Nginx esté corriendo
 docker ps | grep nginx
 
 # Generar certificado SSL con Certbot
+echo "Generando certificado SSL..."
 docker run --rm -v $(pwd)/certbot/conf:/etc/letsencrypt \
              -v $(pwd)/certbot/www:/var/www/certbot \
              certbot/certbot certonly --webroot -w /var/www/certbot \
              -d $DOMAIN --email tu-email@ejemplo.com --agree-tos --no-eff-email
 
 # Reiniciar Nginx para aplicar los cambios
+echo "Reiniciando Nginx..."
 docker-compose restart nginx
 
 # Configuración final
