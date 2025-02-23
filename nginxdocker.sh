@@ -18,8 +18,9 @@ else
 fi
 
 # Crear estructura de directorios
-mkdir -p ~/odoo-docker/{nginx/conf.d,certbot/www,certbot/conf,custom_addons}
-cd ~/odoo-docker || exit
+mkdir -p ~/odoo17/
+mkdir -p ~/odoo17/nginx/conf.d ~/odoo17/certbot/www ~/odoo17/certbot/conf ~/odoo17/custom_addons
+cd ~/odoo17 || exit
 
 # Crear archivo docker-compose.yml
 cat <<EOF > docker-compose.yml
