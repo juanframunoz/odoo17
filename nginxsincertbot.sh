@@ -1,0 +1,129 @@
+#!/bin/bash
+
+# Solicitar el dominio al usuario
+echo "Introduce el dominio donde se servirá Odoo (ej. odoo.midominio.com):"
+read DOMAIN
+
+# Definir variables de configuración
+ODOO_PORT=8069
+POSTGRES_PORT=5432
+DIR_ODOO=~/odoo17
+NGINX_CONF=nginx.conf
+COMPOSE_FILE=docker-compose.yml
+
+# Verificar si Docker y Docker Compose están instalados
+if ! command -v docker &> /dev/null; then
+    echo "Docker no está instalado. Instalándolo..."
+    sudo apt update && sudo apt install -y docker.io
+fi
+
+if ! command -v docker-compose &> /dev/null; then
+    echo "Docker Compose no está instalado. Instalándolo..."
+    sudo apt install -y docker-compose
+fi
+
+# Crear directorio de instalación
+mkdir -p $DIR_ODOO
+cd $DIR_ODOO
+
+# Crear docker-compose.yml
+cat <<EOL > $COMPOSE_FILE
+version: '3.1'
+
+services:
+  db:
+    image: postgres:15
+    container_name: odoo_db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=odoo
+      - POSTGRES_PASSWORD=odoo
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: always
+    ports:
+      - "\${POSTGRES_PORT}:5432"
+
+  odoo:
+    image: odoo:17.0
+    container_name: odoo_app
+    depends_on:
+      - db
+    environment:
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=odoo
+    volumes:
+      - odoo-data:/var/lib/odoo
+      - ./custom_addons:/mnt/extra-addons
+      - ./logs/odoo:/var/log/odoo
+    restart: always
+    expose:
+      - "\${ODOO_PORT}"
+    user: "1000:1000"  # Asegurar que Odoo corre como usuario correcto
+
+  nginx:
+    image: nginx:latest
+    container_name: odoo_nginx
+    depends_on:
+      - odoo
+    volumes:
+      - ./$NGINX_CONF:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
+      - odoo-data:/var/lib/odoo
+    ports:
+      - "80:80"
+    restart: always
+
+volumes:
+  odoo-data:
+  postgres-data:
+EOL
+
+# Crear configuración de Nginx
+cat <<EOL > $NGINX_CONF
+worker_processes auto;
+events { worker_connections 1024; }
+http {
+    server {
+        listen 80;
+        server_name $DOMAIN;
+
+        location / {
+            proxy_pass http://odoo:8069;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_set_header X-Frame-Options "ALLOW-FROM http://$DOMAIN";
+            proxy_set_header X-Content-Type-Options nosniff;
+        }
+
+        location /web/static/ {
+            root /var/lib/odoo;
+            autoindex on;
+            expires 30d;
+            add_header Cache-Control "public, max-age=2592000";
+        }
+
+        access_log /var/log/nginx/access.log;
+        error_log /var/log/nginx/error.log;
+    }
+}
+EOL
+
+# Asegurar permisos adecuados
+sudo chown -R 1000:1000 $DIR_ODOO/odoo-data  # Asegurar que Odoo tiene acceso a sus datos
+sudo chown -R 999:999 $DIR_ODOO/postgres-data  # Asegurar que PostgreSQL tiene permisos adecuados
+sudo chown -R root:root $DIR_ODOO/logs/nginx  # Logs de Nginx accesibles por root
+sudo chmod -R 755 $DIR_ODOO
+
+# Iniciar los contenedores
+if [ ! "$(docker ps -q -f name=odoo_app)" ]; then
+    docker-compose up -d
+else
+    echo "Los contenedores ya están en ejecución. Reiniciándolos..."
+    docker-compose restart
+fi
+
+echo "Odoo está configurado y accesible en http://$DOMAIN"
