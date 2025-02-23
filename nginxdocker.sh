@@ -9,6 +9,11 @@ if [ -z "$DOMAIN" ]; then
     exit 1
 fi
 
+# Detener y eliminar todos los contenedores en ejecución
+echo "Deteniendo todos los contenedores en ejecución..."
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)
+
 # Crear estructura de directorios
 mkdir -p ~/odoo-docker/{nginx/conf.d,certbot/www,certbot/conf}
 cd ~/odoo-docker || exit
@@ -23,7 +28,7 @@ services:
     depends_on:
       - db
     ports:
-      - "8069:8069"
+      - "8070:8069"
     volumes:
       - odoo-data:/var/lib/odoo
       - ./config:/etc/odoo
@@ -91,7 +96,7 @@ server {
     ssl_ciphers HIGH:!aNULL:!MD5;
     
     location / {
-        proxy_pass http://odoo:8069;
+        proxy_pass http://odoo:8070;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
