@@ -46,7 +46,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: always
     ports:
-      - "5432:5432"
+      - 5432:5432
 
   odoo:
     image: odoo:17.0
@@ -121,11 +121,12 @@ http {
 }
 EOL
 
-# Asignar permisos dentro de los contenedores
-docker-compose up -d
+# Iniciar y limpiar contenedores
+sudo docker-compose up -d --remove-orphans
 sleep 5  # Esperar a que los contenedores arranquen
 
-docker exec -u root odoo17_web_1 chown -R 1000:1000 /var/lib/odoo /mnt/extra-addons /var/log/odoo
-docker exec -u root odoo17_bd_1 chown -R 999:999 /var/lib/postgresql/data
+# Asignar permisos dentro de los contenedores
+sudo docker exec -u root odoo17_web_1 chown -R 1000:1000 /var/lib/odoo /mnt/extra-addons /var/log/odoo
+sudo docker exec -u root odoo17_bd_1 chown -R 999:999 /var/lib/postgresql/data
 
 echo "Odoo está configurado y accesible en http://$DOMAIN"
