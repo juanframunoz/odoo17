@@ -22,8 +22,14 @@ if ! command -v docker-compose &> /dev/null; then
     sudo apt install -y docker-compose
 fi
 
-# Crear directorio de instalación
-mkdir -p $DIR_ODOO
+# Verificar si ya existen los volúmenes antes de crearlos
+docker volume inspect odoo-data &> /dev/null || docker volume create odoo-data
+docker volume inspect postgres-data &> /dev/null || docker volume create postgres-data
+
+# Crear directorio de instalación si no existe
+if [ ! -d "$DIR_ODOO" ]; then
+    mkdir -p $DIR_ODOO
+fi
 cd $DIR_ODOO
 
 # Crear docker-compose.yml
@@ -59,7 +65,7 @@ services:
       - ./logs/odoo:/var/log/odoo
     restart: always
     expose:
-      - "\${ODOO_PORT}"
+      - 8069
     user: "1000:1000"  # Asegurar que Odoo corre como usuario correcto
 
   nginx:
@@ -112,18 +118,11 @@ http {
 }
 EOL
 
-# Asegurar permisos adecuados
-sudo chown -R 1000:1000 $DIR_ODOO/odoo-data  # Asegurar que Odoo tiene acceso a sus datos
-sudo chown -R 999:999 $DIR_ODOO/postgres-data  # Asegurar que PostgreSQL tiene permisos adecuados
-sudo chown -R root:root $DIR_ODOO/logs/nginx  # Logs de Nginx accesibles por root
-sudo chmod -R 755 $DIR_ODOO
+# Asignar permisos dentro de los contenedores
+docker-compose up -d
+sleep 5  # Esperar a que los contenedores arranquen
 
-# Iniciar los contenedores
-if [ ! "$(docker ps -q -f name=odoo_app)" ]; then
-    docker-compose up -d
-else
-    echo "Los contenedores ya están en ejecución. Reiniciándolos..."
-    docker-compose restart
-fi
+docker exec -u root odoo_app chown -R 1000:1000 /var/lib/odoo /mnt/extra-addons /var/log/odoo
+docker exec -u root odoo_db chown -R 999:999 /var/lib/postgresql/data
 
 echo "Odoo está configurado y accesible en http://$DOMAIN"
