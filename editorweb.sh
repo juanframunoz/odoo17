@@ -62,6 +62,36 @@ server {
         proxy_http_version 1.1;
     }
 
+    # Servir archivos estáticos de Odoo con Nginx
+    location /web/static/ {
+        alias /var/lib/odoo/.local/share/Odoo/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        access_log off;
+    }
+
+    # Servir imágenes y archivos estáticos del módulo web de Odoo
+    location /web/content/ {
+        proxy_pass http://127.0.0.1:8069;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_redirect off;
+
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        access_log off;
+    }
+
+    # Servir archivos estáticos de la web directamente
+    location /static/ {
+        root /var/www/$DOMAIN/;
+        expires 30d;
+        add_header Cache-Control "public, max-age=2592000";
+        access_log off;
+    }
+
     # Seguridad: bloquea acceso a archivos sensibles
     location ~* /\.(git|env|htaccess|htpasswd) {
         deny all;
