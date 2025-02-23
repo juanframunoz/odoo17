@@ -17,6 +17,9 @@ else
     echo "No se encontró docker-compose.yml, creando uno nuevo..."
 fi
 
+# Eliminar contenedores corruptos si existen
+docker ps -a | grep "Exited" | awk '{print $1}' | xargs --no-run-if-empty docker rm
+
 # Crear estructura de directorios
 mkdir -p ~/odoo17/
 mkdir -p ~/odoo17/nginx/conf.d ~/odoo17/certbot/www ~/odoo17/certbot/conf ~/odoo17/custom_addons
@@ -137,11 +140,14 @@ EOF
 echo "Levantando los contenedores..."
 docker-compose up -d
 
-# Esperar unos segundos para que Nginx esté completamente activo
-sleep 10
+# Esperar hasta que Nginx esté completamente activo
+until docker ps | grep nginx; do
+    echo "Esperando a que Nginx se inicie..."
+    sleep 5
+done
 
-# Verificar que Nginx esté corriendo
-docker ps | grep nginx
+# Verificar logs de Nginx si está en estado de reinicio
+docker ps | grep nginx | grep Restarting && docker-compose logs nginx
 
 # Generar certificado SSL con Certbot
 echo "Generando certificado SSL..."
