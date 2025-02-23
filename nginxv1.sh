@@ -83,7 +83,7 @@ sudo certbot --nginx -d $DOMAIN_WITHOUT_WWW --redirect --non-interactive --agree
 
 # Verificar permisos del usuario odoo dentro del contenedor
 echo "Verificando permisos del usuario odoo en el contenedor..."
-docker exec -it odoo bash -c "chown -R odoo:odoo /var/lib/odoo /var/log/odoo"
+docker exec -it odoo17_web_1 bash -c "chown -R odoo:odoo /var/lib/odoo /var/log/odoo"
 
 # Reiniciar Nginx
 sudo systemctl restart nginx
