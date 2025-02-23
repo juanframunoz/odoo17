@@ -11,27 +11,26 @@ fi
 
 # Detener y eliminar todos los contenedores en ejecución
 echo "Deteniendo todos los contenedores en ejecución..."
-docker stop $(docker ps -aq)
-docker rm $(docker ps -aq)
+docker-compose down
 
 # Crear estructura de directorios
-mkdir -p ~/odoo-docker/{nginx/conf.d,certbot/www,certbot/conf}
+mkdir -p ~/odoo-docker/{nginx/conf.d,certbot/www,certbot/conf,custom_addons}
 cd ~/odoo-docker || exit
 
 # Crear archivo docker-compose.yml
 cat <<EOF > docker-compose.yml
-version: '3.8'
+version: '3.1'
 
 services:
-  odoo:
-    image: odoo:17
+  web:
+    image: odoo:17.0
     depends_on:
       - db
-    ports:
-      - "8070:8069"
+    expose:
+      - "8069"
     volumes:
       - odoo-data:/var/lib/odoo
-      - ./config:/etc/odoo
+      - ./custom_addons:/mnt/extra-addons
     environment:
       - HOST=db
       - USER=odoo
@@ -40,16 +39,16 @@ services:
   db:
     image: postgres:13
     environment:
+      - POSTGRES_DB=postgres
       - POSTGRES_USER=odoo
       - POSTGRES_PASSWORD=odoo
-      - POSTGRES_DB=postgres
     volumes:
-      - db-data:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
 
   nginx:
     image: nginx:latest
     depends_on:
-      - odoo
+      - web
     ports:
       - "80:80"
       - "443:443"
@@ -68,7 +67,7 @@ services:
 
 volumes:
   odoo-data:
-  db-data:
+  postgres-data:
 EOF
 
 # Crear configuración de Nginx
@@ -76,11 +75,11 @@ cat <<EOF > nginx/conf.d/odoo.conf
 server {
     listen 80;
     server_name $DOMAIN;
-    
+
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
     }
-    
+
     location / {
         return 301 https://\$host\$request_uri;
     }
@@ -89,14 +88,14 @@ server {
 server {
     listen 443 ssl;
     server_name $DOMAIN;
-    
+
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
-    
+
     location / {
-        proxy_pass http://odoo:8070;
+        proxy_pass http://web:8069;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -105,14 +104,14 @@ server {
         proxy_connect_timeout 600;
         proxy_send_timeout 600;
         proxy_read_timeout 600;
-        
+
         add_header X-Frame-Options "SAMEORIGIN";
         add_header X-XSS-Protection "1; mode=block";
         add_header X-Content-Type-Options "nosniff";
     }
 
     location /longpolling {
-        proxy_pass http://odoo:8072;
+        proxy_pass http://web:8072;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -127,11 +126,20 @@ server {
 }
 EOF
 
-# Generar certificado SSL con Certbot
-docker run --rm -v $(pwd)/certbot/conf:/etc/letsencrypt -v $(pwd)/certbot/www:/var/www/certbot certbot/certbot certonly --webroot -w /var/www/certbot -d $DOMAIN --email tu-email@ejemplo.com --agree-tos --no-eff-email
-
 # Levantar los contenedores
 docker-compose up -d
+
+# Verificar que Nginx esté corriendo
+docker ps | grep nginx
+
+# Generar certificado SSL con Certbot
+docker run --rm -v $(pwd)/certbot/conf:/etc/letsencrypt \
+             -v $(pwd)/certbot/www:/var/www/certbot \
+             certbot/certbot certonly --webroot -w /var/www/certbot \
+             -d $DOMAIN --email tu-email@ejemplo.com --agree-tos --no-eff-email
+
+# Reiniciar Nginx para aplicar los cambios
+docker-compose restart nginx
 
 # Configuración final
 echo "Instalación completada. Odoo ahora está disponible en https://$DOMAIN"
