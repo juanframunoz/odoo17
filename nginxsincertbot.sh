@@ -5,8 +5,6 @@ echo "Introduce el dominio donde se servirá Odoo (ej. odoo.midominio.com):"
 read DOMAIN
 
 # Definir variables de configuración
-ODOO_PORT=8069
-POSTGRES_PORT=5432
 DIR_ODOO=~/odoo17
 NGINX_CONF=nginx.conf
 COMPOSE_FILE=docker-compose.yml
@@ -39,7 +37,7 @@ version: '3.1'
 services:
   db:
     image: postgres:15
-    container_name: odoo_db
+    container_name: odoo17_bd_1
     environment:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=odoo
@@ -48,11 +46,11 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: always
     ports:
-      - "\${POSTGRES_PORT}:5432"
+      - "5432:5432"
 
   odoo:
     image: odoo:17.0
-    container_name: odoo_app
+    container_name: odoo17_web_1
     depends_on:
       - db
     environment:
@@ -97,19 +95,24 @@ http {
 
         location / {
             proxy_pass http://odoo:8069;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade \$http_upgrade;
+            proxy_set_header Connection "upgrade";
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_set_header X-Frame-Options "ALLOW-FROM http://$DOMAIN";
-            proxy_set_header X-Content-Type-Options nosniff;
+            proxy_hide_header X-Frame-Options;
+            add_header X-Frame-Options "ALLOW-FROM http://$DOMAIN";
+            add_header Content-Security-Policy "frame-ancestors 'self' http://$DOMAIN";
+            proxy_buffering off;
         }
 
         location /web/static/ {
-            root /var/lib/odoo;
-            autoindex on;
+            alias /var/lib/odoo/addons/17.0/web/static/;
             expires 30d;
             add_header Cache-Control "public, max-age=2592000";
+            add_header X-Frame-Options "ALLOW-FROM http://$DOMAIN";
         }
 
         access_log /var/log/nginx/access.log;
@@ -122,7 +125,7 @@ EOL
 docker-compose up -d
 sleep 5  # Esperar a que los contenedores arranquen
 
-docker exec -u root odoo_app chown -R 1000:1000 /var/lib/odoo /mnt/extra-addons /var/log/odoo
-docker exec -u root odoo_db chown -R 999:999 /var/lib/postgresql/data
+docker exec -u root odoo17_web_1 chown -R 1000:1000 /var/lib/odoo /mnt/extra-addons /var/log/odoo
+docker exec -u root odoo17_bd_1 chown -R 999:999 /var/lib/postgresql/data
 
 echo "Odoo está configurado y accesible en http://$DOMAIN"
