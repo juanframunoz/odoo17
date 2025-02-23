@@ -30,8 +30,8 @@ POSTGRES_DIR="/opt/pg-data"
 echo "🔄 Instalando Docker y Docker Compose..."
 sudo apt update && sudo apt install -y docker.io docker-compose
 
-# Crear el directorio de Odoo y PostgreSQL
-mkdir -p $ODOO_DIR $POSTGRES_DIR
+# Crear directorios para Odoo, PostgreSQL y Certbot
+mkdir -p $ODOO_DIR $POSTGRES_DIR $ODOO_DIR/nginx-webroot
 
 # Crear el archivo docker-compose.yml
 echo "⚙️ Creando configuración de Docker Compose..."
@@ -73,6 +73,7 @@ services:
     volumes:
       - $ODOO_DIR/nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - $ODOO_DIR/nginx-webroot:/var/www/html
     ports:
       - "80:80"
       - "443:443"
@@ -83,8 +84,8 @@ services:
     container_name: odoo_certbot
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt
-      - /var/lib/letsencrypt:/var/lib/letsencrypt
-    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait \$${!}; done'"
+      - $ODOO_DIR/nginx-webroot:/var/www/html
+    entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/html; sleep 12h & wait \$${!}; done"]
 EOF
 
 # Crear configuración de Nginx
@@ -143,7 +144,7 @@ docker-compose up -d
 
 # Instalar Certbot y obtener certificado SSL
 echo "🔑 Instalando Certbot y generando certificado SSL..."
-docker run --rm -v /etc/letsencrypt:/etc/letsencrypt -v /var/lib/letsencrypt:/var/lib/letsencrypt certbot/certbot certonly --webroot --webroot-path=/var/www/html --email admin@$DOMAIN --agree-tos --no-eff-email -d $DOMAIN
+docker run --rm -v /etc/letsencrypt:/etc/letsencrypt -v $ODOO_DIR/nginx-webroot:/var/www/html certbot/certbot certonly --webroot -w /var/www/html --email admin@$DOMAIN --agree-tos --no-eff-email -d $DOMAIN
 
 # Reiniciar Nginx para aplicar el certificado SSL
 echo "🔄 Reiniciando Nginx..."
@@ -152,5 +153,8 @@ docker-compose restart nginx
 # Configurar la renovación automática de SSL
 echo "🔄 Configurando renovación automática de certificados..."
 echo "0 3 * * * root docker-compose run --rm certbot renew && docker-compose restart nginx" | sudo tee /etc/cron.d/certbot-renew
+
+# Verificar que los contenedores están corriendo
+docker ps
 
 echo "✅ Instalación completada. Accede a Odoo en: https://$DOMAIN"
