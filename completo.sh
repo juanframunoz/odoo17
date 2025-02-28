@@ -30,7 +30,7 @@ if ! command -v docker-compose &> /dev/null; then
     sudo chmod +x /usr/local/bin/docker-compose
 fi
 
-sudo apt install -y curl git unzip python3-pip certbot python3-certbot-nginx
+sudo apt install -y curl git unzip python3-pip certbot
 
 # Crear directorios
 sudo mkdir -p $ODOO_DIR/extra-addons
