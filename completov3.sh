@@ -45,6 +45,10 @@ fi
 
 sudo apt install -y curl git unzip python3-pip certbot
 
+# Detener y deshabilitar Nginx del host para evitar conflictos con Certbot
+sudo systemctl stop nginx
+sudo systemctl disable nginx
+
 # Crear directorios necesarios
 sudo mkdir -p $ODOO_DIR/extra-addons
 sudo mkdir -p $ODOO_VOLUME_DIR/filestore
