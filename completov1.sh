@@ -35,11 +35,11 @@ sudo apt install -y curl git unzip python3-pip certbot
 # Crear directorios
 sudo mkdir -p $ODOO_DIR/extra-addons
 sudo mkdir -p $ODOO_VOLUME_DIR/filestore
-sudo mkdir -p $ODOO_VOLUME_DIR/static
+# Nota: No creamos el directorio "static" ya que usaremos los assets incluidos en la imagen de Odoo.
 
-# Configurar permisos
-sudo chown -R 1000:1000 $ODOO_DIR
-sudo chown -R 1000:1000 $ODOO_VOLUME_DIR
+# Configurar permisos (aseguramos que el filestore sea propiedad del usuario que ejecuta Odoo, UID 101)
+sudo chown -R 101:101 $ODOO_DIR
+sudo chown -R 101:101 $ODOO_VOLUME_DIR
 sudo chmod -R 775 $ODOO_VOLUME_DIR
 
 # Crear archivo docker-compose.yml
@@ -66,7 +66,6 @@ services:
       - db
     volumes:
       - /var/lib/docker/volumes/odoo/filestore:/var/lib/odoo/filestore
-      - /var/lib/docker/volumes/odoo/static:/usr/lib/python3/dist-packages/odoo/addons/web/static
       - /opt/odoo/extra-addons:/mnt/extra-addons
     environment:
       - HOST=db
@@ -86,7 +85,6 @@ services:
     volumes:
       - /opt/odoo/nginx.conf:/etc/nginx/nginx.conf:ro
       - /var/lib/docker/volumes/odoo/filestore:/var/lib/odoo/filestore:ro
-      - /var/lib/docker/volumes/odoo/static:/usr/lib/python3/dist-packages/odoo/addons/web/static:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
 EOF
 
@@ -158,7 +156,6 @@ sudo sed -i "s/DOMAIN_PLACEHOLDER/$DOMAIN/g" $ODOO_DIR/nginx.conf
 # Generar certificados SSL (usando el plugin standalone)
 if ! sudo certbot certificates | grep -q "$DOMAIN"; then
     echo "No se encontró certificado SSL para $DOMAIN. Generando certificado..."
-    # Detener el contenedor de Nginx para liberar el puerto 80
     cd $ODOO_DIR
     docker-compose stop nginx
     sudo certbot certonly --standalone -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN
