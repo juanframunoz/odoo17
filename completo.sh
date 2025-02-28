@@ -43,51 +43,67 @@ sudo chown -R 1000:1000 $ODOO_VOLUME_DIR
 sudo chmod -R 775 $ODOO_VOLUME_DIR
 
 # Crear archivo docker-compose.yml
-cat <<EOF | sudo tee $ODOO_DIR/docker-compose.yml
-version: '3.1'
+cat <<'EOF' | sudo tee $ODOO_DIR/nginx.conf
+worker_processes auto;
 
-services:
-  db:
-    image: postgres:15
-    container_name: postgres_db
-    restart: always
-    environment:
-      POSTGRES_DB: odoo
-      POSTGRES_USER: odoo
-      POSTGRES_PASSWORD: odoo
-    volumes:
-      - $ODOO_VOLUME_DIR/pgdata:/var/lib/postgresql/data
+events {
+    worker_connections 1024;
+}
 
-  odoo:
-    image: odoo:17
-    container_name: odoo17
-    restart: always
-    depends_on:
-      - db
-    volumes:
-      - $ODOO_VOLUME_DIR/filestore:/var/lib/odoo/filestore
-      - $ODOO_VOLUME_DIR/static:/usr/lib/python3/dist-packages/odoo/addons/web/static/
-      - $ODOO_DIR/extra-addons:/mnt/extra-addons
-    environment:
-      - HOST=db
-      - USER=odoo
-      - PASSWORD=odoo
-      - PROXY_MODE=True
-    ports:
-      - "$ODOO_PORT:8069"
+http {
+    include /etc/nginx/mime.types;
+    sendfile on;
+    gzip on;
+    gzip_types text/css application/javascript image/svg+xml;
+    client_max_body_size 100M;
 
-  nginx:
-    image: nginx:latest
-    container_name: nginx_odoo
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - $ODOO_DIR/nginx.conf:/etc/nginx/nginx.conf:ro
-      - $ODOO_VOLUME_DIR/filestore:/var/lib/odoo/filestore:ro
-      - $ODOO_VOLUME_DIR/static:/usr/lib/python3/dist-packages/odoo/addons/web/static/:ro
+    server {
+        listen 80;
+        server_name $DOMAIN;
+
+        location / {
+            return 301 https://\$host\$request_uri;
+        }
+    }
+
+    server {
+        listen 443 ssl;
+        server_name $DOMAIN;
+
+        ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+        include /etc/letsencrypt/options-ssl-nginx.conf;
+        ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
+        add_header X-Frame-Options SAMEORIGIN;
+        add_header Content-Security-Policy "frame-ancestors 'self';" always;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection "1; mode=block";
+
+        location /web/static/ {
+            alias /usr/lib/python3/dist-packages/odoo/addons/web/static/;
+            expires 90d;
+            access_log off;
+        }
+
+        location /filestore/ {
+            alias /var/lib/odoo/filestore/;
+            expires 90d;
+            access_log off;
+        }
+
+        location / {
+            proxy_pass http://odoo:$ODOO_PORT;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_redirect off;
+        }
+    }
+}
 EOF
+
 
 # Crear archivo de configuración de Nginx
 cat <<EOF | sudo tee $ODOO_DIR/nginx.conf
