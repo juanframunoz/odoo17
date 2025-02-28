@@ -19,11 +19,6 @@ if ! command -v docker &> /dev/null; then
     sudo apt install -y docker.io
 fi
 
-if ! command -v nginx &> /dev/null; then
-    echo "⚠️ Nginx no está instalado. Instalándolo ahora..."
-    sudo apt install -y nginx
-fi
-
 if ! command -v docker-compose &> /dev/null; then
     echo "⚠️ Docker Compose no está instalado. Instalando la última versión..."
     sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
