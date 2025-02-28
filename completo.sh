@@ -181,6 +181,19 @@ fi
 # Configurar renovación automática de certificados
 (crontab -l ; echo "0 3 * * * certbot renew --quiet") | crontab -
 
+# Generar certificado SSL si no existe para el dominio
+if ! sudo certbot certificates | grep -q "$DOMAIN"; then
+    echo "No se encontró certificado SSL para $DOMAIN. Generando certificado..."
+    # Detener el contenedor de Nginx para liberar el puerto 80
+    docker-compose stop nginx
+    # Generar certificado usando el plugin standalone
+    sudo certbot certonly --standalone -d $DOMAIN --non-interactive --agree-tos --email admin@$DOMAIN
+    # Reiniciar el contenedor de Nginx
+    docker-compose start nginx
+else
+    echo "✅ Certificado SSL ya existente para $DOMAIN, no es necesario regenerarlo."
+fi
+
 # Verificar estado de los contenedores
 echo "⌛ Verificando que los contenedores estén corriendo..."
 docker ps
