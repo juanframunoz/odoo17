@@ -17,6 +17,17 @@ HOSTNAME="${DOMAIN#*://}"
 echo "Usando DOMAIN (con protocolo): $DOMAIN"
 echo "Usando HOSTNAME: $HOSTNAME"
 
+# Preguntar si se desea usar el entorno de pruebas para Certbot
+echo "¿Desea utilizar el entorno de pruebas (staging) para Certbot? (s/n):"
+read USE_STAGING
+if [[ "$USE_STAGING" == "s" || "$USE_STAGING" == "S" ]]; then
+    STAGING="--staging"
+    echo "Se utilizará el entorno de pruebas (staging)."
+else
+    STAGING=""
+    echo "Se utilizará el entorno de producción."
+fi
+
 # Variables de directorios y puertos
 ODOO_DIR="/opt/odoo"
 ODOO_PORT="8069"
@@ -94,7 +105,6 @@ services:
       - db
     volumes:
       - /var/lib/docker/volumes/odoo/filestore:/var/lib/odoo/filestore
-      # Se monta extra-addons aunque esté vacío; se puede comentar si no se utiliza.
       - /opt/odoo/extra-addons:/mnt/extra-addons
       - /opt/odoo/odoo.conf:/etc/odoo/odoo.conf:ro
     environment:
@@ -157,8 +167,6 @@ http {
         add_header X-Content-Type-Options nosniff;
         add_header X-XSS-Protection "1; mode=block";
 
-        # Se utiliza proxy inverso para pasar todas las solicitudes a Odoo,
-        # permitiendo que Odoo sirva sus activos de forma segura.
         location / {
             proxy_pass http://odoo:8069;
             proxy_set_header Host $host;
@@ -191,11 +199,11 @@ docker-compose start odoo
 # Actualizar el parámetro web.base.url en la base de datos para que use HTTPS
 docker exec -it postgres_db psql -U odoo -d odoo -c "INSERT INTO ir_config_parameter(key, value) VALUES ('web.base.url', '$DOMAIN') ON CONFLICT (key) DO UPDATE SET value = '$DOMAIN';"
 
-# Generar certificados SSL (usando Certbot standalone)
+# Generar certificados SSL usando Certbot (utilizando la opción de staging si se indicó)
 if ! sudo certbot certificates | grep -q "$HOSTNAME"; then
     echo "No se encontró certificado SSL para $HOSTNAME. Generando certificado..."
     docker-compose stop nginx
-    sudo certbot certonly --standalone -d $HOSTNAME --non-interactive --agree-tos --email admin@$HOSTNAME
+    sudo certbot certonly $STAGING --standalone -d $HOSTNAME --non-interactive --agree-tos --email admin@$HOSTNAME
     docker-compose start nginx
 else
     echo "✅ Certificado SSL ya existente para $HOSTNAME, no es necesario regenerarlo."
