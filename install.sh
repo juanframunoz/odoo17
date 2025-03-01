@@ -239,6 +239,11 @@ fi
 # Verificar estado de los contenedores
 echo "⌛ Verificando que los contenedores estén corriendo..."
 docker ps
+sudo chmod 755 /etc/letsencrypt/live
+sudo chmod 755 /etc/letsencrypt/archive
+docker-compose down
+docker-compose up -d
+docker ps
 
 echo "🚀 Odoo 17 instalado correctamente con Nginx y Let's Encrypt en Ubuntu 22.04."
 echo "Accede a: $DOMAIN"
