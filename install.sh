@@ -241,8 +241,10 @@ echo "⌛ Verificando que los contenedores estén corriendo..."
 docker ps
 sudo chmod 755 /etc/letsencrypt/live
 sudo chmod 755 /etc/letsencrypt/archive
+cd $ODOO_DIR
 docker-compose down
 docker-compose up -d
+echo "⌛ Verificando que los contenedores estén corriendo 2..."
 docker ps
 
 echo "🚀 Odoo 17 instalado correctamente con Nginx y Let's Encrypt en Ubuntu 22.04."
