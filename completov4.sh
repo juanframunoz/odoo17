@@ -194,6 +194,25 @@ fi
 # Configurar renovación automática de certificados
 (crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet") | crontab -
 
+# Verificar si options-ssl-nginx.conf existe, si no, descargarlo o crearlo
+if [ ! -f /etc/letsencrypt/options-ssl-nginx.conf ]; then
+    echo "options-ssl-nginx.conf no encontrado. Intentando descargarlo..."
+    if ! sudo wget -O /etc/letsencrypt/options-ssl-nginx.conf https://raw.githubusercontent.com/certbot/certbot/main/certbot-nginx/certbot_nginx/options-ssl-nginx.conf; then
+        echo "Error al descargar el archivo. Creando un archivo de configuración básico."
+        sudo tee /etc/letsencrypt/options-ssl-nginx.conf > /dev/null <<'EOF'
+# Configuración SSL recomendada
+ssl_session_cache shared:le_nginx_SSL:1m;
+ssl_session_timeout 1440m;
+ssl_session_tickets off;
+
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+ssl_ciphers 'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+ssl_ecdh_curve secp384r1;
+EOF
+    fi
+fi
+
 # Iniciar (o reiniciar) los contenedores
 cd $ODOO_DIR
 docker-compose up -d
