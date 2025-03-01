@@ -61,7 +61,6 @@ sudo chmod -R 775 $ODOO_VOLUME_DIR
 
 # Crear archivo docker-compose.yml
 cat <<'EOF' | sudo tee $ODOO_DIR/docker-compose.yml
-version: '3.1'
 
 services:
   db:
@@ -84,6 +83,7 @@ services:
     volumes:
       - /var/lib/docker/volumes/odoo/filestore:/var/lib/odoo/filestore
       - /opt/odoo/extra-addons:/mnt/extra-addons
+      - /opt/odoo/odoo.conf:/etc/odoo/odoo.conf:ro
     environment:
       - HOST=db
       - USER=odoo
