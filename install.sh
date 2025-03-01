@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Preguntar el dominio al usuario
 echo "Por favor, ingrese el dominio para Odoo (ejemplo: fichar.me o https://fichar.me):"
@@ -149,7 +150,7 @@ http {
         server_name DOMAIN_PLACEHOLDER;
 
         location / {
-            return 301 https://$host$request_uri;
+            return 301 https://\$host\$request_uri;
         }
     }
 
@@ -169,10 +170,10 @@ http {
 
         location / {
             proxy_pass http://odoo:8069;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
             proxy_redirect off;
         }
     }
@@ -181,6 +182,23 @@ EOF
 
 # Reemplazar DOMAIN_PLACEHOLDER por el hostname real en nginx.conf
 sudo sed -i "s/DOMAIN_PLACEHOLDER/$HOSTNAME/g" $ODOO_DIR/nginx.conf
+
+# Crear archivo de opciones SSL para Nginx (opcional, pero recomendado)
+sudo tee /etc/letsencrypt/options-ssl-nginx.conf > /dev/null <<'EOF'
+# Opciones SSL recomendadas por Certbot
+ssl_session_cache shared:le_nginx_SSL:1m;
+ssl_session_timeout 1440m;
+ssl_session_tickets off;
+
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+ssl_ciphers 'ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384';
+ssl_ecdh_curve secp384r1;
+EOF
+
+# Ajustar permisos en directorios de Let's Encrypt (para que Nginx pueda leerlos)
+sudo chmod 755 /etc/letsencrypt/live
+sudo chmod 755 /etc/letsencrypt/archive
 
 # Iniciar los contenedores (bajamos todo si es una instalación nueva)
 cd $ODOO_DIR
