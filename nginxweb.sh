@@ -17,26 +17,26 @@ echo "Configurando Nginx para el dominio $DOMAIN..."
 cat <<EOF | sudo tee /etc/nginx/sites-available/odoo
 server {
     listen 80;
-    server_name mkt.odoo.uno;
-    return 301 https://$host$request_uri;
+    server_name \$DOMAIN;
+    return 301 https://\$host\$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name mkt.odoo.uno;
+    server_name \$DOMAIN;
 
-    ssl_certificate /etc/letsencrypt/live/mkt.odoo.uno/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/mkt.odoo.uno/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/\$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/\$DOMAIN/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
     # Add Headers for Odoo proxy mode
-    proxy_set_header X-Forwarded-Host $host;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Host \$host;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto https;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Client-IP $remote_addr;
-    proxy_set_header HTTP_X_FORWARDED_HOST $remote_addr;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Client-IP \$remote_addr;
+    proxy_set_header HTTP_X_FORWARDED_HOST \$remote_addr;
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-XSS-Protection "1; mode=block";
 
@@ -67,9 +67,9 @@ server {
     location / {
         proxy_pass http://127.0.0.1:8069;
         proxy_redirect http:// https://;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto https;
     }
 
@@ -77,7 +77,7 @@ server {
         proxy_pass http://127.0.0.1:8072;
     }
 
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico)\$ {
         expires 2d;
         proxy_pass http://127.0.0.1:8069;
         add_header Cache-Control "public, no-transform";
@@ -100,11 +100,11 @@ sudo ln -s /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
 sudo systemctl restart nginx
 
 # Obtener certificado SSL con Let's Encrypt
-sudo certbot --nginx -d $DOMAIN --agree-tos --redirect --email sistemas@odoo.uno
+sudo certbot --nginx -d \$DOMAIN --agree-tos --redirect --email sistemas@odoo.uno
 
 # Configurar renovación automática del certificado
 echo "Configurando renovación automática del certificado SSL..."
 (crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && systemctl reload nginx") | crontab -
 
 # Finalización
-echo "Instalación completada. Odoo ahora está disponible en https://$DOMAIN"
+echo "Instalación completada. Odoo ahora está disponible en https://\$DOMAIN"
