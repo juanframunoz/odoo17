@@ -17,16 +17,16 @@ echo "Configurando Nginx para el dominio $DOMAIN..."
 cat <<EOF | sudo tee /etc/nginx/sites-available/odoo
 server {
     listen 80;
-    server_name \$DOMAIN;
+    server_name $DOMAIN;
     return 301 https://\$host\$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name \$DOMAIN;
+    server_name $DOMAIN;
 
-    ssl_certificate /etc/letsencrypt/live/\$DOMAIN/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/\$DOMAIN/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
@@ -92,7 +92,6 @@ server {
         proxy_pass http://127.0.0.1:8069;
     }
 }
-
 EOF
 
 # Activar la configuración y reiniciar Nginx
@@ -100,11 +99,11 @@ sudo ln -s /etc/nginx/sites-available/odoo /etc/nginx/sites-enabled/
 sudo systemctl restart nginx
 
 # Obtener certificado SSL con Let's Encrypt
-sudo certbot --nginx -d \$DOMAIN --agree-tos --redirect --email sistemas@odoo.uno
+sudo certbot --nginx -d $DOMAIN --agree-tos --redirect --email sistemas@odoo.uno
 
 # Configurar renovación automática del certificado
 echo "Configurando renovación automática del certificado SSL..."
 (crontab -l 2>/dev/null; echo "0 3 * * * certbot renew --quiet && systemctl reload nginx") | crontab -
 
 # Finalización
-echo "Instalación completada. Odoo ahora está disponible en https://\$DOMAIN"
+echo "Instalación completada. Odoo ahora está disponible en https://$DOMAIN"
