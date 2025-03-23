@@ -39,7 +39,6 @@ cd ..
 # Crear archivo docker-compose.yml
 echo "Creando archivo docker-compose.yml..."
 cat <<EOL > docker-compose.yml
-version: '3.1'
 services:
   web:
     image: odoo:17.0
