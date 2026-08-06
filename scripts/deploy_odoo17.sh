@@ -71,8 +71,9 @@ fi
 [[ -n ${POSTGRES_PASSWORD:-} ]] || die "Falta POSTGRES_PASSWORD en ${ENV_FILE}."
 [[ -n ${ODOO_ADMIN_PASSWORD:-} ]] || die "Falta ODOO_ADMIN_PASSWORD en ${ENV_FILE}."
 
-log "Escribiendo configuración de Odoo"
-cat >"${ODOO_CONFIG}" <<EOF
+if [[ ! -f ${ODOO_CONFIG} ]]; then
+    log "Escribiendo configuración inicial de Odoo"
+    cat >"${ODOO_CONFIG}" <<EOF
 [options]
 admin_passwd = ${ODOO_ADMIN_PASSWORD}
 db_host = db
@@ -92,8 +93,11 @@ limit_time_cpu = 120
 limit_time_real = 240
 log_level = info
 EOF
-chown root:101 "${ODOO_CONFIG}"
-chmod 0640 "${ODOO_CONFIG}"
+    chown root:101 "${ODOO_CONFIG}"
+    chmod 0640 "${ODOO_CONFIG}"
+else
+    log "Conservando la configuración existente de Odoo"
+fi
 
 log "Escribiendo Docker Compose"
 cat >"${COMPOSE_FILE}" <<'EOF'
