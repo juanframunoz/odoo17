@@ -1,6 +1,6 @@
 # Odoo 17
 
-Automatización reproducible para preparar servidores Ubuntu 24.04 LTS destinados a Odoo 17 sobre Docker.
+Automatización reproducible para preparar y desplegar Odoo 17 sobre Ubuntu 24.04 LTS y Docker.
 
 ## Preparación del servidor
 
@@ -27,7 +27,7 @@ Antes de ejecutarlo:
 
 La instalación mediante ISO, la recuperación mediante Rescue y la gestión de contraseñas permanecen manuales para evitar borrados o bloqueos accidentales.
 
-## Uso
+## Preparar el host
 
 ```bash
 git clone https://github.com/juanframunoz/odoo17.git
@@ -35,8 +35,27 @@ cd odoo17
 sudo bash scripts/provision_ubuntu_odoo17_host.sh
 ```
 
-El script es idempotente y no reinicia el servidor automáticamente.
+## Desplegar Odoo 17
+
+El script [`scripts/deploy_odoo17.sh`](scripts/deploy_odoo17.sh) crea una instalación nueva con:
+
+- Odoo 17 y PostgreSQL 15 en contenedores separados;
+- PostgreSQL sin puertos públicos;
+- Odoo enlazado únicamente a `127.0.0.1`;
+- volúmenes persistentes bajo `/opt/odoo17`;
+- secretos aleatorios conservados con permisos restrictivos;
+- Nginx, HTTPS y renovación mediante Let's Encrypt;
+- dominio `electrothermotruck.mecanicos.uno`;
+- correo de certificados `soporte@mecanicos.uno`.
+
+```bash
+sudo bash scripts/deploy_odoo17.sh
+```
+
+Tras el despliegue debe crearse una base de datos nueva llamada `electrothermotruck`.
+
+Los scripts son idempotentes y no reinician el servidor automáticamente.
 
 ## Seguridad
 
-Odoo y PostgreSQL no deben exponerse directamente a Internet. Los contenedores se configurarán en una red interna y Odoo se publicará únicamente a través de Nginx en los puertos 80 y 443.
+Odoo y PostgreSQL no se exponen directamente a Internet. Los contenedores usan una red interna y Odoo se publica exclusivamente a través de Nginx en los puertos 80 y 443. No deben publicarse los puertos 5432, 8069, 8071 ni 8072 en interfaces públicas.
