@@ -54,6 +54,14 @@ sudo bash scripts/deploy_odoo17.sh
 
 Tras el despliegue debe crearse una base de datos nueva llamada `electrothermotruck`.
 
+Después de crearla, se debe cerrar el gestor público y fijar el filtro:
+
+```bash
+sudo bash scripts/lock_odoo17_database.sh electrothermotruck
+```
+
+El script de despliegue conserva cualquier configuración de Odoo ya existente en ejecuciones posteriores.
+
 Los scripts son idempotentes y no reinician el servidor automáticamente.
 
 ## Seguridad
