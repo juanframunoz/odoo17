@@ -62,6 +62,40 @@ sudo bash scripts/lock_odoo17_database.sh electrothermotruck
 
 El script de despliegue conserva cualquier configuración de Odoo ya existente en ejecuciones posteriores.
 
+## Descargar los addons desde Git
+
+[`scripts/sync_odoo17_addons.sh`](scripts/sync_odoo17_addons.sh) descarga las últimas revisiones de las ramas Odoo 17 seleccionadas y publica únicamente los módulos requeridos. Incluye OCA, MuK y los repositorios de Factor Digital, entre ellos `sale_reception_flow`, `sale_reception_flow_v1` y `fd_facturas_albaranes_ai`.
+
+Los repositorios privados necesitan una clave SSH con acceso de solo lectura a:
+
+- `juanframunoz/odoo-apps`;
+- `juanframunoz/terminados`;
+- `juanframunoz/sin_inventariar`.
+
+La clave no se guarda en el repositorio. Tras añadir su parte pública en GitHub y comprobar manualmente la huella de `github.com`, ejecute:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y git rsync
+sudo GITHUB_DEPLOY_KEY=/root/.ssh/id_ed25519_github_odoo17 \
+  bash scripts/sync_odoo17_addons.sh
+```
+
+El proceso primero clona y valida todos los repositorios. Solo después actualiza `/opt/odoo17/addons`. Rechaza manifiestos que no sean de Odoo 17 y versiones Factor Digital anteriores a las auditadas.
+
+Cada ejecución genera `/opt/odoo17/addons-git.lock`, que registra repositorio, rama y commit exacto. De este modo se descargan las versiones más recientes disponibles, pero queda constancia precisa de lo instalado.
+
+Para aplicar el nuevo código:
+
+```bash
+sudo docker compose \
+  --env-file /opt/odoo17/.env \
+  -f /opt/odoo17/compose.yaml \
+  restart odoo
+```
+
+Después se debe actualizar la lista de aplicaciones y probar los módulos en una base de ensayo antes de instalarlos en producción. Las ramas de PR se mantienen fijadas explícitamente hasta que sus cambios estén validados y fusionados.
+
 Los scripts son idempotentes y no reinician el servidor automáticamente.
 
 ## Seguridad
