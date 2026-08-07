@@ -4,10 +4,8 @@ set -Eeuo pipefail
 # Descarga desde Git las versiones seleccionadas de los addons de Odoo 17 y
 # publica solo los módulos necesarios en /opt/odoo17/addons.
 #
-# Los repositorios privados de juanframunoz requieren una clave SSH de GitHub.
-# Puede indicarse explícitamente con:
-#   GITHUB_DEPLOY_KEY=/root/.ssh/id_ed25519_github_odoo17 \
-#     sudo -E bash scripts/sync_odoo17_addons.sh
+# Los repositorios privados usan alias SSH con deploy keys independientes de
+# solo lectura. Configúralos antes con configure_github_deploy_keys.sh.
 
 readonly STACK_DIR="${STACK_DIR:-/opt/odoo17}"
 readonly ADDONS_DIR="${ADDONS_DIR:-${STACK_DIR}/addons}"
@@ -33,10 +31,6 @@ for command_name in git rsync python3; do
 done
 
 export GIT_TERMINAL_PROMPT=0
-if [[ -n ${GITHUB_DEPLOY_KEY:-} ]]; then
-    [[ -r ${GITHUB_DEPLOY_KEY} ]] || die "No se puede leer GITHUB_DEPLOY_KEY=${GITHUB_DEPLOY_KEY}."
-    export GIT_SSH_COMMAND="ssh -i ${GITHUB_DEPLOY_KEY} -o IdentitiesOnly=yes"
-fi
 
 install -d -m 0750 "${STACK_DIR}" "${ADDONS_DIR}"
 TEMP_ROOT="$(mktemp -d "${STACK_DIR}/.addons-sync.XXXXXX")"
@@ -45,12 +39,12 @@ trap 'rm -rf -- "${TEMP_ROOT}"' EXIT
 # Formato: identificador|repositorio|rama|módulos separados por comas
 # Las ramas de los PR se mantienen explícitas hasta validarlas y fusionarlas.
 SOURCE_SPECS=(
-    "fd-activity-sidebar|git@github.com:juanframunoz/fd_activity_sidebar.git|17.0|fd_activity_sidebar"
-    "fd-core|git@github.com:juanframunoz/odoo-apps.git|17.0|fd_albaranes_compra_ai,fd_booking,fd_ocr_albaranes_de_compra,fd_ocr_facturas_de_compra"
-    "fd-booking-workshop|git@github.com:juanframunoz/odoo-apps.git|${BOOKING_REF}|fd_booking_mechanics,fd_booking_workshop,fd_workshop_time_control,fd_booking_voice_ai"
-    "fd-facturas-albaranes|git@github.com:juanframunoz/odoo-apps.git|${FACTURAS_ALBARANES_REF}|fd_facturas_albaranes_ai"
-    "fd-finished|git@github.com:juanframunoz/terminados.git|main|fd_sugerencias_recambios_rapidapi,fd_whatsapp,sale_ai_assistant,sale_chapaypintura,sale_reception_flow,sale_reception_flow_v1"
-    "fd-uninventoried|git@github.com:juanframunoz/sin_inventariar.git|main|fd_sale_multi_offer"
+    "fd-activity-sidebar|git@github-fd-activity-sidebar:juanframunoz/fd_activity_sidebar.git|17.0|fd_activity_sidebar"
+    "fd-core|git@github-odoo-apps:juanframunoz/odoo-apps.git|17.0|fd_albaranes_compra_ai,fd_booking,fd_ocr_albaranes_de_compra,fd_ocr_facturas_de_compra"
+    "fd-booking-workshop|git@github-odoo-apps:juanframunoz/odoo-apps.git|${BOOKING_REF}|fd_booking_mechanics,fd_booking_workshop,fd_workshop_time_control,fd_booking_voice_ai"
+    "fd-facturas-albaranes|git@github-odoo-apps:juanframunoz/odoo-apps.git|${FACTURAS_ALBARANES_REF}|fd_facturas_albaranes_ai"
+    "fd-finished|git@github-terminados:juanframunoz/terminados.git|main|fd_sugerencias_recambios_rapidapi,fd_whatsapp,sale_ai_assistant,sale_chapaypintura,sale_reception_flow,sale_reception_flow_v1"
+    "fd-uninventoried|git@github-sin-inventariar:juanframunoz/sin_inventariar.git|main|fd_sale_multi_offer"
     "oca-account-financial-reporting|https://github.com/OCA/account-financial-reporting.git|17.0|account_tax_balance"
     "oca-server-tools|https://github.com/OCA/server-tools.git|17.0|auditlog"
     "oca-server-ux|https://github.com/OCA/server-ux.git|17.0|date_range,date_range_account"
