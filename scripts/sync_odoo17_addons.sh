@@ -112,6 +112,13 @@ for spec in "${SOURCE_SPECS[@]}"; do
         SEEN_MODULES[${module}]=1
 
         source_module="${checkout}/${module}"
+        # Algunos repositorios contienen varios módulos y otros, como
+        # fd_activity_sidebar, contienen el módulo directamente en su raíz.
+        if [[ ! -f ${source_module}/__manifest__.py &&
+              ${#modules[@]} -eq 1 &&
+              -f ${checkout}/__manifest__.py ]]; then
+            source_module="${checkout}"
+        fi
         manifest="${source_module}/__manifest__.py"
         [[ -f ${manifest} ]] || die "Falta ${module}/__manifest__.py en ${repository} (${ref})."
 
