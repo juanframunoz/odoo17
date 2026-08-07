@@ -45,7 +45,8 @@ trap 'rm -rf -- "${TEMP_ROOT}"' EXIT
 # Formato: identificador|repositorio|rama|módulos separados por comas
 # Las ramas de los PR se mantienen explícitas hasta validarlas y fusionarlas.
 SOURCE_SPECS=(
-    "fd-core|git@github.com:juanframunoz/odoo-apps.git|17.0|fd_activity_sidebar,fd_albaranes_compra_ai,fd_booking,fd_ocr_albaranes_de_compra,fd_ocr_facturas_de_compra"
+    "fd-activity-sidebar|git@github.com:juanframunoz/fd_activity_sidebar.git|17.0|fd_activity_sidebar"
+    "fd-core|git@github.com:juanframunoz/odoo-apps.git|17.0|fd_albaranes_compra_ai,fd_booking,fd_ocr_albaranes_de_compra,fd_ocr_facturas_de_compra"
     "fd-booking-workshop|git@github.com:juanframunoz/odoo-apps.git|${BOOKING_REF}|fd_booking_mechanics,fd_booking_workshop,fd_workshop_time_control,fd_booking_voice_ai"
     "fd-facturas-albaranes|git@github.com:juanframunoz/odoo-apps.git|${FACTURAS_ALBARANES_REF}|fd_facturas_albaranes_ai"
     "fd-finished|git@github.com:juanframunoz/terminados.git|main|fd_sugerencias_recambios_rapidapi,fd_whatsapp,sale_ai_assistant,sale_chapaypintura,sale_reception_flow,sale_reception_flow_v1"
