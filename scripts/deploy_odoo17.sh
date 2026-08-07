@@ -105,8 +105,16 @@ cat >"${ODOO_DOCKERFILE}" <<'EOF'
 FROM odoo:17.0
 
 USER root
-RUN apt-get update \\
-    && apt-get install -y --no-install-recommends python3-cssselect \\
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        poppler-utils \
+        python3-cssselect \
+        python3-pip \
+        tesseract-ocr \
+        tesseract-ocr-spa \
+    && pip3 install --no-cache-dir --break-system-packages \
+        pdf2image==1.17.0 \
+        pytesseract==0.3.13 \
     && rm -rf /var/lib/apt/lists/*
 USER odoo
 EOF
