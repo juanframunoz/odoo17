@@ -40,7 +40,7 @@ trap 'rm -rf -- "${TEMP_ROOT}"' EXIT
 # Las ramas de los PR se mantienen explícitas hasta validarlas y fusionarlas.
 SOURCE_SPECS=(
     "fd-activity-sidebar|git@github-fd-activity-sidebar:juanframunoz/fd_activity_sidebar.git|17.0|fd_activity_sidebar"
-    "fd-core|git@github-odoo-apps:juanframunoz/odoo-apps.git|17.0|fd_albaranes_compra_ai,fd_booking,fd_ocr_albaranes_de_compra,fd_ocr_facturas_de_compra"
+    "fd-core|git@github-odoo-apps:juanframunoz/odoo-apps.git|17.0|fd_albaranes_compra_ai,fd_booking,fd_ocr_facturas_de_compra"
     "fd-booking-workshop|git@github-odoo-apps:juanframunoz/odoo-apps.git|${BOOKING_REF}|fd_booking_mechanics,fd_booking_workshop,fd_workshop_time_control,fd_booking_voice_ai"
     "fd-facturas-albaranes|git@github-odoo-apps:juanframunoz/odoo-apps.git|${FACTURAS_ALBARANES_REF}|fd_facturas_albaranes_ai"
     "fd-finished|git@github-terminados:juanframunoz/terminados.git|main|fd_sugerencias_recambios_rapidapi,fd_whatsapp,sale_ai_assistant,sale_chapaypintura,sale_reception_flow,sale_reception_flow_v1"
@@ -61,7 +61,6 @@ declare -A EXPECTED_MINIMUMS=(
     [fd_booking_mechanics]="17.0.1.7.7"
     [fd_booking_voice_ai]="17.0.1.18.0"
     [fd_booking_workshop]="17.0.1.0.23"
-    [fd_ocr_albaranes_de_compra]="17.0.3.12.0"
     [fd_ocr_facturas_de_compra]="17.0.1.9.25"
     [fd_sale_multi_offer]="17.0.3.0.2"
     [fd_sugerencias_recambios_rapidapi]="17.0.4.3.8"
