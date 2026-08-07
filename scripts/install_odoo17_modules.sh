@@ -80,7 +80,7 @@ install_group "oca-foundation"     "date_range,date_range_account,account_tax_ba
 
 install_group "interface"     "muk_web_appsbar,muk_web_chatter,muk_web_colors,muk_web_dialog,muk_web_theme,fd_activity_sidebar"
 
-install_group "reception-sales"     "sale_reception_flow,sale_reception_flow_v1,sale_ai_assistant,sale_chapaypintura,fd_sugerencias_recambios_rapidapi,fd_sale_multi_offer,fd_whatsapp"
+install_group "reception-sales"     "sale_reception_flow,sale_reception_flow_v1,sale_ai_assistant,sale_chapaypintura,fd_sugerencias_recambios_rapidapi,fd_sale_multi_offer"
 
 install_group "purchase-ocr"     "fd_albaranes_compra_ai,fd_ocr_facturas_de_compra,fd_facturas_albaranes_ai"
 
@@ -102,7 +102,7 @@ for attempt in $(seq 1 30); do
 done
 
 log "Verificando estados"
-readonly EXPECTED_MODULES="account_tax_balance,auditlog,date_range,date_range_account,fd_activity_sidebar,fd_albaranes_compra_ai,fd_booking,fd_booking_mechanics,fd_booking_voice_ai,fd_booking_workshop,fd_facturas_albaranes_ai,fd_ocr_facturas_de_compra,fd_sale_multi_offer,fd_sugerencias_recambios_rapidapi,fd_whatsapp,fd_workshop_time_control,l10n_es_aeat,l10n_es_aeat_mod111,l10n_es_aeat_mod115,l10n_es_aeat_mod130,l10n_es_aeat_mod190,l10n_es_aeat_mod303,l10n_es_aeat_mod347,l10n_es_aeat_mod390,muk_web_appsbar,muk_web_chatter,muk_web_colors,muk_web_dialog,muk_web_theme,resource_booking,sale_ai_assistant,sale_chapaypintura,sale_reception_flow,sale_reception_flow_v1,web_calendar_slot_duration"
+readonly EXPECTED_MODULES="account_tax_balance,auditlog,date_range,date_range_account,fd_activity_sidebar,fd_albaranes_compra_ai,fd_booking,fd_booking_mechanics,fd_booking_voice_ai,fd_booking_workshop,fd_facturas_albaranes_ai,fd_ocr_facturas_de_compra,fd_sale_multi_offer,fd_sugerencias_recambios_rapidapi,fd_workshop_time_control,l10n_es_aeat,l10n_es_aeat_mod111,l10n_es_aeat_mod115,l10n_es_aeat_mod130,l10n_es_aeat_mod190,l10n_es_aeat_mod303,l10n_es_aeat_mod347,l10n_es_aeat_mod390,muk_web_appsbar,muk_web_chatter,muk_web_colors,muk_web_dialog,muk_web_theme,resource_booking,sale_ai_assistant,sale_chapaypintura,sale_reception_flow,sale_reception_flow_v1,web_calendar_slot_duration"
 
 query_names="'$(printf '%s' "${EXPECTED_MODULES}" | sed "s/,/','/g")'"
 states="$(compose exec -T db psql -U odoo -d "${DATABASE}" -Atc     "SELECT name || '|' || state || '|' || COALESCE(latest_version, '')
@@ -116,10 +116,10 @@ installed_count="$(printf '%s\n' "${states}" | awk -F'|' '$2 == "installed" {cou
 
 [[ -z ${not_installed} ]] ||
     die "Hay módulos que no quedaron instalados: ${not_installed}"
-[[ ${installed_count} -eq 35 ]] ||
-    die "Se esperaban 35 módulos instalados y se encontraron ${installed_count}."
+[[ ${installed_count} -eq 34 ]] ||
+    die "Se esperaban 34 módulos instalados y se encontraron ${installed_count}."
 
 log "Resultado"
 compose ps
-printf '\nInstalación terminada: 35 módulos instalados.\n'
+printf '\nInstalación terminada: 34 módulos instalados.\n'
 printf 'Copia y logs: %s\n' "${BACKUP_DIR}"
