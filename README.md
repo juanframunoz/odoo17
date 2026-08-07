@@ -88,6 +88,8 @@ El proceso primero clona y valida todos los repositorios. Solo después actualiz
 
 Cada ejecución genera `/opt/odoo17/addons-git.lock`, que registra repositorio, rama y commit exacto. De este modo se descargan las versiones más recientes disponibles, pero queda constancia precisa de lo instalado.
 
+La selección instala 34 módulos adicionales. Se excluyen expresamente `fd_whatsapp` y `fd_ocr_albaranes_de_compra`; `fd_albaranes_compra_ai` sí forma parte de la instalación y conserva sus tareas programadas.
+
 Para aplicar el nuevo código:
 
 ```bash
