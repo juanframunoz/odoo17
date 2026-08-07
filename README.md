@@ -64,7 +64,7 @@ El script de despliegue conserva cualquier configuración de Odoo ya existente e
 
 ## Descargar los addons desde Git
 
-[`scripts/sync_odoo17_addons.sh`](scripts/sync_odoo17_addons.sh) descarga las últimas revisiones de las ramas Odoo 17 seleccionadas y publica únicamente los módulos requeridos. Incluye OCA, MuK y los repositorios de Factor Digital, entre ellos `sale_reception_flow`, `sale_reception_flow_v1` y `fd_facturas_albaranes_ai`.
+[`scripts/sync_odoo17_addons.sh`](scripts/sync_odoo17_addons.sh) descarga las últimas revisiones de las ramas Odoo 17 seleccionadas y publica únicamente los módulos requeridos. Incluye OCA, MuK y los repositorios de Factor Digital, entre ellos `sale_reception_flow`, `sale_reception_flow_v1`, `fd_facturas_albaranes_ai` y `fd_booking_voice_ai`.
 
 Los repositorios privados necesitan una clave SSH con acceso de solo lectura a:
 
