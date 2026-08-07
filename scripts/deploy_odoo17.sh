@@ -12,6 +12,7 @@ readonly DB_NAME="${DB_NAME:-electrothermotruck}"
 readonly COMPOSE_FILE="${STACK_DIR}/compose.yaml"
 readonly ENV_FILE="${STACK_DIR}/.env"
 readonly ODOO_CONFIG="${STACK_DIR}/config/odoo.conf"
+readonly ODOO_DOCKERFILE="${STACK_DIR}/Dockerfile"
 readonly NGINX_SITE="/etc/nginx/sites-available/${DOMAIN}"
 
 log() {
@@ -99,6 +100,18 @@ else
     log "Conservando la configuración existente de Odoo"
 fi
 
+log "Escribiendo imagen personalizada de Odoo"
+cat >"${ODOO_DOCKERFILE}" <<'EOF'
+FROM odoo:17.0
+
+USER root
+RUN apt-get update \\
+    && apt-get install -y --no-install-recommends python3-cssselect \\
+    && rm -rf /var/lib/apt/lists/*
+USER odoo
+EOF
+chmod 0644 "${ODOO_DOCKERFILE}"
+
 log "Escribiendo Docker Compose"
 cat >"${COMPOSE_FILE}" <<'EOF'
 services:
@@ -121,7 +134,10 @@ services:
       - odoo_internal
 
   odoo:
-    image: odoo:17.0
+    image: odoo17-custom:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       db:
@@ -148,7 +164,8 @@ chmod 0640 "${COMPOSE_FILE}"
 
 log "Validando e iniciando contenedores"
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" config >/dev/null
-docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" pull db
+docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" build --pull odoo
 docker compose --env-file "${ENV_FILE}" -f "${COMPOSE_FILE}" up -d
 
 for attempt in {1..36}; do
