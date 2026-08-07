@@ -42,6 +42,14 @@ compose ps
 compose exec -T db pg_isready -U odoo -d "${DATABASE}" >/dev/null ||
     die "PostgreSQL no responde o no existe la base ${DATABASE}."
 
+log "Verificando dependencias de los addons"
+compose exec -T odoo python3 -c \
+    'import cssselect, requests, PIL, pytesseract, pdf2image' ||
+    die "Faltan dependencias Python en la imagen de Odoo."
+compose exec -T odoo sh -c \
+    'command -v tesseract >/dev/null && command -v pdftoppm >/dev/null' ||
+    die "Faltan Tesseract o Poppler en la imagen de Odoo."
+
 log "Creando copia de seguridad"
 compose exec -T db pg_dump -U odoo -d "${DATABASE}" -Fc >"${BACKUP_DIR}/${DATABASE}.dump"
 pg_restore_test="$(compose exec -T db pg_restore --list <"${BACKUP_DIR}/${DATABASE}.dump" | head -n 1 || true)"
