@@ -66,20 +66,23 @@ El script de despliegue conserva cualquier configuración de Odoo ya existente e
 
 [`scripts/sync_odoo17_addons.sh`](scripts/sync_odoo17_addons.sh) descarga las últimas revisiones de las ramas Odoo 17 seleccionadas y publica únicamente los módulos requeridos. Incluye OCA, MuK y los repositorios de Factor Digital, entre ellos `sale_reception_flow`, `sale_reception_flow_v1`, `fd_facturas_albaranes_ai` y `fd_booking_voice_ai`.
 
-Los repositorios privados necesitan una clave SSH con acceso de solo lectura a:
+Los repositorios privados usan una deploy key independiente y de solo lectura para:
 
 - `juanframunoz/odoo-apps`;
 - `juanframunoz/terminados`;
-- `juanframunoz/sin_inventariar`.
+- `juanframunoz/sin_inventariar`;
+- `juanframunoz/fd_activity_sidebar`.
 
-La clave no se guarda en el repositorio. Tras añadir su parte pública en GitHub y comprobar manualmente la huella de `github.com`, ejecute:
+Las claves privadas no se guardan en el repositorio. Después de generar las cuatro claves y añadir sus partes públicas como deploy keys sin permiso de escritura, ejecute:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y git rsync
-sudo GITHUB_DEPLOY_KEY=/root/.ssh/id_ed25519_github_odoo17 \
-  bash scripts/sync_odoo17_addons.sh
+sudo bash scripts/configure_github_deploy_keys.sh
+sudo bash scripts/sync_odoo17_addons.sh
 ```
+
+El configurador asigna una identidad distinta a cada repositorio y fija la clave Ed25519 oficial de `github.com` con comprobación estricta del host.
 
 El proceso primero clona y valida todos los repositorios. Solo después actualiza `/opt/odoo17/addons`. Rechaza manifiestos que no sean de Odoo 17 y versiones Factor Digital anteriores a las auditadas.
 
