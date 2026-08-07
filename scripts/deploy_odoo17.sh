@@ -112,7 +112,7 @@ RUN apt-get update \
         python3-pip \
         tesseract-ocr \
         tesseract-ocr-spa \
-    && pip3 install --no-cache-dir --break-system-packages \
+    && pip3 install --no-cache-dir \
         pdf2image==1.17.0 \
         pytesseract==0.3.13 \
     && rm -rf /var/lib/apt/lists/*
